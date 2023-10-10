@@ -97,7 +97,7 @@ def main():
     accelerator_log_kwargs = {}
 
     accelerator_log_kwargs["log_with"] = args.report_to
-    accelerator_log_kwargs["logging_dir"] = args.output_dir
+    accelerator_log_kwargs["project_dir"] = args.output_dir
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps, **accelerator_log_kwargs)
@@ -155,6 +155,8 @@ def main():
             "You are instantiating a new tokenizer from scratch. This is not supported by this script."
             "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
+    if not tokenizer.pad_token:
+        tokenizer.add_special_tokens({"pad_token": "<pad>"})
 
     if args.model_name_or_path:
         model = AutoModelForCausalLM.from_pretrained(

@@ -11,6 +11,7 @@ from transformers import (
     GPT2LMHeadModel,
     BloomForCausalLM,
     ViTForImageClassification,
+    LlamaForCausalLM
 )
 from offsite_tuning.models.clip_vit import CLIPViTForImageClassification
 from offsite_tuning.models.eva_vit import EVAViTForImageClassification
@@ -568,6 +569,8 @@ def get_layers(model):
         layers = model.vit.encoder.layers
     elif isinstance(model, EVAViTForImageClassification):
         layers = model.blocks
+    elif isinstance(model, LlamaForCausalLM):
+        layers = model.model.layers
     else:
         raise NotImplementedError
     return layers
@@ -585,6 +588,8 @@ def set_layers(model, layers):
         model.vit.encoder.layers = layers
     elif isinstance(model, EVAViTForImageClassification):
         model.blocks = layers
+    elif isinstance(model, LlamaForCausalLM):
+        layers = model.model.layers
     else:
         raise NotImplementedError
 
@@ -709,6 +714,9 @@ def to_teacher(model, args):
         r = len(model.blocks) - args.student_r_pad
         model.blocks = model.blocks[:l] + \
             model.teacher + model.blocks[r:]
+    elif isinstance(model, LlamaForCausalLM):
+        r = len(model.model.layers) - args.student_r_pad
+        model.model.layers = model.model.layers[:l] + model.teacher + model.model.layers[r:]
     else:
         raise NotImplementedError
 
@@ -739,6 +747,9 @@ def to_student(model, args):
         r = len(model.blocks) - args.student_r_pad
         model.blocks = model.blocks[:l] + \
             model.student + model.blocks[r:]
+    elif isinstance(model, LlamaForCausalLM):
+        r = len(model.model.layers) - args.student_r_pad
+        model.model.layers = model.model.layers[:l] + model.student + model.model.layers[r:]
     else:
         raise NotImplementedError
 
@@ -803,6 +814,10 @@ def load_adapter(model, adapter_state_dict, args):
         r = len(model.transformer.h) - args.student_r_pad
         adapter_layers = model.transformer.h[:l] + model.transformer.h[r:]
         adapter_layers.load_state_dict(adapter_state_dict)
+    elif isinstance(model, LlamaForCausalLM):
+        r = len(model.model.layers) - args.student_r_pad
+        adapter_layers = model.model.layers[:l] + model.model.layers[r:]
+        adapter_layers.load_state_dict(adapter_state_dict)
     else:
         raise NotImplementedError
     return model
@@ -831,6 +846,11 @@ def load_student(model, student_state_dict, args):
         student_layers.load_state_dict(student_state_dict)
         model.transformer.h = model.transformer.h[:l] + \
             student_layers + model.transformer.h[r:]
+    elif isinstance(model, LlamaForCausalLM):
+        r = len(model.model.layers) - args.student_r_pad
+        student_layers = model.model.layers[l:l + student_layers_len]
+        student_layers.load_state_dict(student_state_dict)
+        model.model.layers = model.model.layers[:l] + student_layers + model.model.layers[r:]
     else:
         raise NotImplementedError
     return model

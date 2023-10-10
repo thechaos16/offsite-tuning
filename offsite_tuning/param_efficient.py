@@ -6,6 +6,7 @@ import math
 from typing import Optional, List
 from transformers.models.opt.modeling_opt import OPTDecoderLayer
 from transformers.models.gpt2.modeling_gpt2 import GPT2Block
+from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.pytorch_utils import Conv1D
 
 
@@ -213,6 +214,14 @@ def use_lora(layers: nn.ModuleList, r: int, lora_alpha: int, lora_dropout: float
                 layer.mlp.c_fc, r, lora_alpha, lora_dropout, merge_weights)
             layer.mlp.c_proj = LoRALinear.from_conv1d(
                 layer.mlp.c_proj, r, lora_alpha, lora_dropout, merge_weights)
+    elif isinstance(layers[0], LlamaDecoderLayer):
+        for layer in layers:
+            layer.self_attn.q_proj = LoRALinear.from_linear(layer.self_attn.q_proj, r, lora_alpha, lora_dropout, merge_weights)
+            layer.self_attn.k_proj = LoRALinear.from_linear(layer.self_attn.k_proj, r, lora_alpha, lora_dropout, merge_weights)
+            layer.self_attn.v_proj = LoRALinear.from_linear(layer.self_attn.v_proj, r, lora_alpha, lora_dropout, merge_weights)
+            layer.self_attn.o_proj = LoRALinear.from_linear(layer.self_attn.o_proj, r, lora_alpha, lora_dropout, merge_weights)
+            layer.mlp.up_proj = LoRALinear.from_linear(layer.mlp.up_proj, r, lora_alpha, lora_dropout, merge_weights)
+            layer.mlp.down_proj = LoRALinear.from_linear(layer.mlp.down_proj, r, lora_alpha, lora_dropout, merge_weights)
     else:
         raise NotImplementedError
 
